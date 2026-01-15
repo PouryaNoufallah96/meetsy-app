@@ -413,6 +413,14 @@
 }
 
 @layer utilities {
+  .page-wrapper {
+    @apply space-y-8 py-12;
+  }
+
+  .page-heading {
+    @apply text-3xl font-bold tracking-tight;
+  }
+
   .layout-container {
     @apply container mx-auto px-4 flex h-16 items-center justify-between;
   }
