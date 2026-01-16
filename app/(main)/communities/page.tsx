@@ -10,9 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCommunities, useCommunityGoals } from "@/hooks/use-communities";
-import { BotIcon } from "lucide-react";
+import { ArrowRightIcon, BotIcon, PlusIcon } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
+import AddLearningGoal from "@/components/communities/add-learning-goal";
 
 export default function CommunitiesPage() {
   const [activeTab, setActiveTab] = useState<"goals" | "matches">("goals");
@@ -105,6 +106,7 @@ export default function CommunitiesPage() {
                   </CardHeader>
                 </Card>
               ))}
+              <AddLearningGoal selectedCommunityId={selectedCommunity!} />
             </div>
           ) : (
             <AIMatching totalGoals={communityGoals?.length || 0} />

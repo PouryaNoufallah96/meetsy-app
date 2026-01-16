@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { HTTPException } from "hono/http-exception";
 import { communitiesApp } from "@/app/server/community-routes";
+import { learningGoalsApp } from "@/app/server/learning-goals-routes";
 
 type Variables = {
   userId: string;
@@ -53,7 +54,10 @@ app.use("/*", async (c, next) => {
   return await next();
 });
 
-const routes = app.route("/communities", communitiesApp);
+const routes = app
+  .route("/communities", communitiesApp)
+  .route("/communities", learningGoalsApp);
+
 export type AppType = typeof routes;
 
 export const GET = handle(app);
