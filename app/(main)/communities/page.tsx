@@ -109,7 +109,10 @@ export default function CommunitiesPage() {
               <AddLearningGoal selectedCommunityId={selectedCommunity!} />
             </div>
           ) : (
-            <AIMatching totalGoals={communityGoals?.length || 0} />
+            <AIMatching
+              totalGoals={communityGoals?.length || 0}
+              selectedCommunityId={selectedCommunity!}
+            />
           )}
         </CardContent>
       </Card>
