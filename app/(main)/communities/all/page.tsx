@@ -14,6 +14,7 @@ import {
   useCommunities,
   useJoinCommunity,
 } from "@/hooks/use-communities";
+import { toast } from "sonner";
 
 export default function AllCommunitiesPage() {
   const {
@@ -33,8 +34,8 @@ export default function AllCommunitiesPage() {
   const joinCommunityMutation = useJoinCommunity();
 
   const handleJoinCommunity = async (communityId: string) => {
-    console.log("Joining community", communityId);
     await joinCommunityMutation.mutateAsync(communityId);
+    toast.success("Joined community successfully");
   };
 
   if (isLoadingAllCommunities) return <div>Loading...</div>;
