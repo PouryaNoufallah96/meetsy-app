@@ -1,4 +1,4 @@
-import { PlusIcon } from "lucide-react";
+import { LockIcon, PlusIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { useState } from "react";
 import { Textarea } from "../ui/textarea";
@@ -6,8 +6,10 @@ import { useCreateLearningGoal } from "@/hooks/use-goals";
 
 export default function AddLearningGoal({
   selectedCommunityId,
+  showLockIcon,
 }: {
   selectedCommunityId: string;
+  showLockIcon: boolean;
 }) {
   const [showNewGoalForm, setShowNewGoalForm] = useState(false);
   const [newGoalText, setNewGoalText] = useState("");
@@ -44,7 +46,9 @@ export default function AddLearningGoal({
               size="sm"
               onClick={handleCreateGoal}
               disabled={
-                createGoalMutation.isPending || newGoalText.length === 0
+                createGoalMutation.isPending ||
+                newGoalText.length === 0 ||
+                showLockIcon
               }
             >
               Add Goal
@@ -63,7 +67,11 @@ export default function AddLearningGoal({
           variant={"outline"}
           className="w-full"
           onClick={() => setShowNewGoalForm(true)}
+          disabled={showLockIcon}
         >
+          {showLockIcon && (
+            <LockIcon className="size-4 text-muted-foreground" />
+          )}
           <PlusIcon className="size-3" /> Add Learning Goal
         </Button>
       )}

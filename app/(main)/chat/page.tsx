@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAcceptMatch, useMatches } from "@/hooks/use-ai-partner";
+import { useCurrentUser } from "@/hooks/use-users";
 import { useRouter } from "next/navigation";
 
 export default function ChatPage() {
@@ -12,6 +13,9 @@ export default function ChatPage() {
     isLoading: isLoadingMatches,
     error: errorMatches,
   } = useMatches();
+
+  const { data: user } = useCurrentUser();
+  const isPro = user?.isPro;
 
   const router = useRouter();
 
@@ -25,6 +29,13 @@ export default function ChatPage() {
   );
   const pendingMatches = matches?.filter((match) => match.status === "pending");
 
+  let pendingMatchesToShow = [];
+  if (!isPro) {
+    pendingMatchesToShow = pendingMatches?.slice(0, 1) || [];
+  } else {
+    pendingMatchesToShow = pendingMatches || [];
+  }
+
   if (acceptMatchMutation.isError)
     return <div>Error: {acceptMatchMutation.error.message}</div>;
 
@@ -33,7 +44,7 @@ export default function ChatPage() {
       <h2 className="text-2xl font-semibold">Pending Matches</h2>
 
       <div className="flex gap-4 overflow-x-scroll">
-        {pendingMatches?.map((match) => {
+        {pendingMatchesToShow?.map((match) => {
           const partner = {
             id: match.partner.id || "",
             name: match.partner.name || "Partner",

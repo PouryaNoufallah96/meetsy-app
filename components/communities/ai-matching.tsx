@@ -1,13 +1,16 @@
 import { useAiPartners } from "@/hooks/use-ai-partner";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
+import { LockIcon } from "lucide-react";
 
 export default function AIMatching({
   totalGoals,
   selectedCommunityId,
+  showLockIcon,
 }: {
   totalGoals: number;
   selectedCommunityId: string;
+  showLockIcon: boolean;
 }) {
   const aiPartnerMutation = useAiPartners();
 
@@ -31,9 +34,10 @@ export default function AIMatching({
       </div>
       <Button
         size="lg"
-        disabled={totalGoals === 0}
+        disabled={totalGoals === 0 || showLockIcon}
         onClick={handleFindAIPartners}
       >
+        {showLockIcon && <LockIcon className="size-4 text-muted-foreground" />}
         🤖 Find Partners with AI
       </Button>
       {totalGoals > 0 && (

@@ -1,5 +1,6 @@
 "use client";
 
+import AddLearningGoal from "@/components/communities/add-learning-goal";
 import AIMatching from "@/components/communities/ai-matching";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,10 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCommunities, useCommunityGoals } from "@/hooks/use-communities";
-import { ArrowRightIcon, BotIcon, PlusIcon } from "lucide-react";
+import { useCurrentUser } from "@/hooks/use-users";
+import { BotIcon, LockIcon } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
-import Link from "next/link";
-import AddLearningGoal from "@/components/communities/add-learning-goal";
 
 export default function CommunitiesPage() {
   const [activeTab, setActiveTab] = useState<"goals" | "matches">("goals");
@@ -40,11 +40,23 @@ export default function CommunitiesPage() {
     }
   }, [communities?.length]);
 
+  const numberOfCommunities = communities?.length || 0;
+
+  const { data: user } = useCurrentUser();
+  const isPro = user?.isPro;
+
+  const showLockIcon = numberOfCommunities >= 3 && !isPro;
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
         <CardHeader>
-          <CardTitle>Communities</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {showLockIcon && (
+              <LockIcon className="size-4 text-muted-foreground" />
+            )}{" "}
+            Communities
+          </CardTitle>
           <CardDescription>{communities?.length} joined</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -78,7 +90,6 @@ export default function CommunitiesPage() {
               onClick={() => setActiveTab("matches")}
               variant={activeTab === "matches" ? "default" : "outline"}
             >
-              <BotIcon className="size-4" />
               Find Partners with AI
             </Button>
           </div>
@@ -106,12 +117,16 @@ export default function CommunitiesPage() {
                   </CardHeader>
                 </Card>
               ))}
-              <AddLearningGoal selectedCommunityId={selectedCommunity!} />
+              <AddLearningGoal
+                selectedCommunityId={selectedCommunity!}
+                showLockIcon={showLockIcon}
+              />
             </div>
           ) : (
             <AIMatching
               totalGoals={communityGoals?.length || 0}
               selectedCommunityId={selectedCommunity!}
+              showLockIcon={showLockIcon}
             />
           )}
         </CardContent>
