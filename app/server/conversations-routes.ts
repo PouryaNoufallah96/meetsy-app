@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { messages } from "@/db/schema";
+import { conversations, messages } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { authMiddleware } from "./middleware/auth-middleware";
@@ -19,6 +19,32 @@ const conversationsApp = new Hono<{ Variables: Variables }>()
       .where(eq(messages.conversationId, conversationId));
 
     return c.json(conversationMessages);
+  })
+  .post("/:conversationId/messages", async (c) => {
+    const conversationId = c.req.param("conversationId");
+    const user = c.get("user");
+
+    const { content } = await c.req.json();
+
+    const [message] = await db
+      .insert(messages)
+      .values({
+        conversationId,
+        content,
+        senderId: user.id,
+      })
+      .returning();
+
+    //update the conversation last message time
+
+    await db
+      .update(conversations)
+      .set({
+        lastMessageAt: new Date(),
+      })
+      .where(eq(conversations.id, conversationId));
+
+    return c.json(message);
   });
 
 export { conversationsApp };
