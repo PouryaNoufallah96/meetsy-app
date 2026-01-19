@@ -8,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { useMatches } from "@/hooks/use-ai-partner";
 import { client } from "@/lib/api-client";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
@@ -31,7 +33,41 @@ export default function DashboardPage() {
     },
   });
 
-  const pendingMatches = 6;
+  const { data: allMatches } = useQuery({
+    queryKey: ["allMatches"],
+    queryFn: async () => {
+      const res = await client.api.matches["allmatches"].$get();
+      if (!res.ok) {
+        throw new Error("Failed to fetch pending matches");
+      }
+      return res.json();
+    },
+  });
+
+  const pendingMatchesData = allMatches?.filter(
+    (match) => match.status === "pending"
+  );
+  const activeMatchesData = allMatches?.filter(
+    (match) => match.status === "accepted"
+  );
+
+  const { data: learningGoals } = useQuery({
+    queryKey: ["communityGoals"],
+    queryFn: async () => {
+      const res = await client.api.communities.goals.$get();
+      if (!res.ok) {
+        throw new Error("Failed to fetch learning goals");
+      }
+      return res.json();
+    },
+    enabled: !!userCommunities?.length,
+  });
+
+  const {
+    data: matches,
+    isLoading: isLoadingMatches,
+    error: errorMatches,
+  } = useMatches();
 
   if (isLoadingUserCommunities) return <div>Loading...</div>;
   if (errorUserCommunities)
@@ -49,8 +85,8 @@ export default function DashboardPage() {
       <Card className="border-primary">
         <CardHeader>
           <CardTitle>
-            🎉 You have {pendingMatches} new{" "}
-            {pendingMatches === 1 ? "match" : "matches"}!
+            🎉 You have {pendingMatchesData?.length} new{" "}
+            {pendingMatchesData?.length === 1 ? "match" : "matches"}!
           </CardTitle>
           <CardDescription>
             Review and accept your matches to start chatting
@@ -69,9 +105,15 @@ export default function DashboardPage() {
           title="Your Communities"
           value={userCommunities?.length || 0}
         />
-        <StatsCard title="Learning Goals" value={6} />
-        <StatsCard title="Active Matches" value={6} />
-        <StatsCard title="Pending Matches" value={pendingMatches} />
+        <StatsCard title="Learning Goals" value={learningGoals?.length || 0} />
+        <StatsCard
+          title="Active Matches"
+          value={activeMatchesData?.length || 0}
+        />
+        <StatsCard
+          title="Pending Matches"
+          value={pendingMatchesData?.length || 0}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -89,10 +131,38 @@ export default function DashboardPage() {
                 </Button>
               </Link>
             </div>
-            <CardDescription>Communities you&apos;re part of</CardDescription>
+            <CardDescription>Conversations you&apos;re part of</CardDescription>
           </CardHeader>
 
-          <CardContent></CardContent>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              {matches?.map((match) => (
+                <Link href={`/chat/${match.id}`} key={match.id}>
+                  <Card className="shadow-none">
+                    <CardHeader>
+                      <div className="flex items-center gap-4">
+                        <UserAvatar
+                          name={match.partner.name}
+                          imageUrl={match.partner.imageUrl ?? undefined}
+                          size="sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="font-medium">
+                            {match.partner.name}
+                          </CardTitle>
+                          <CardDescription className="text-xs text-muted-foreground mt-1">
+                            <span>
+                              {match.userGoals.map((g) => g.title).join(", ")}
+                            </span>
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
         </Card>
 
         <Card>

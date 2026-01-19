@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/api-client";
 import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
+import { Badge } from "../ui/badge";
 
 export default function ChatInterface({ matchId }: { matchId: string }) {
   const { user: clerkUser } = useUser();
@@ -78,6 +79,44 @@ export default function ChatInterface({ matchId }: { matchId: string }) {
     },
   });
 
+  const generateSummaryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await client.api.conversations[
+        ":conversationId"
+      ].summarize.$post({
+        param: { conversationId: conversation?.id ?? "" },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to generate summary");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["summary", conversation?.id],
+      });
+    },
+    onError: (error) => {
+      console.error("Error generating summary", error);
+    },
+  });
+
+  const { data: summary } = useQuery({
+    queryKey: ["summary", conversation?.id],
+    queryFn: async () => {
+      const res = await client.api.conversations[
+        ":conversationId"
+      ].summary.$get({
+        param: { conversationId: conversation?.id ?? "" },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch summary");
+      }
+      return res.json();
+    },
+    enabled: !!conversation?.id,
+  });
+
   if (!conversation) {
     return <div>Loading...</div>;
   }
@@ -100,10 +139,10 @@ export default function ChatInterface({ matchId }: { matchId: string }) {
           <CardHeader className="border-b">
             <div className="flex items-center gap-3">
               <UserAvatar
-                name="John Doe"
-                imageUrl="https://github.com/shadcn.png"
+                name={otherUser.name}
+                imageUrl={otherUser.imageUrl ?? undefined}
               />
-              <CardTitle>John Doe</CardTitle>
+              <CardTitle>{otherUser.name}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -176,10 +215,75 @@ export default function ChatInterface({ matchId }: { matchId: string }) {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Conversation Summary</CardTitle>
-              <Button size="sm">Generate</Button>
+              <Button
+                size="sm"
+                onClick={() => generateSummaryMutation.mutate()}
+              >
+                Generate
+              </Button>
             </div>
           </CardHeader>
-          <CardContent>Summary</CardContent>
+          <CardContent className="space-y-4">
+            {summary ? (
+              <>
+                <div>
+                  <h4 className="font-medium mb-2">Summary</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {summary.summary}
+                  </p>
+                </div>
+                {summary.keyPoints && summary.keyPoints.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">Key Points</h4>
+                    <ul className="space-y-1">
+                      {summary.keyPoints.map((point: string, index: number) => (
+                        <li
+                          key={index}
+                          className="text-sm text-muted-foreground"
+                        >
+                          • {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {summary.actionItems && summary.actionItems.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">Action Items</h4>
+                    <div className="space-y-2">
+                      {summary.actionItems.map((item, index: number) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <ul className="flex-1 list-disc list-inside">
+                            <li className="text-sm">{item}</li>
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {summary.nextSteps && summary.nextSteps.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">Next Steps</h4>
+                    <ul className="space-y-1">
+                      {summary.nextSteps.map((step: string, index: number) => (
+                        <li
+                          key={index}
+                          className="text-sm text-muted-foreground"
+                        >
+                          • {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No summary generated yet. Click &quot;Generate&quot; to create
+                one.
+              </p>
+            )}
+          </CardContent>
         </Card>
       </div>
     </div>

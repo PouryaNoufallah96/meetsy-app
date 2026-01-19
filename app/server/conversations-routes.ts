@@ -3,6 +3,7 @@ import { conversations, messages } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { authMiddleware } from "./middleware/auth-middleware";
+import { generateAISummaries, getLatestConversationSummary } from "@/lib/ai";
 
 type Variables = {
   userId: string;
@@ -45,6 +46,26 @@ const conversationsApp = new Hono<{ Variables: Variables }>()
       .where(eq(conversations.id, conversationId));
 
     return c.json(message);
-  });
+  })
+  .post("/:conversationId/summarize", async (c) => {
+    const conversationId = c.req.param("conversationId");
 
+    const conversationMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
+
+    const summary = await generateAISummaries(
+      conversationId,
+      conversationMessages
+    );
+
+    return c.json(summary);
+  })
+  .get("/:conversationId/summary", async (c) => {
+    const conversationId = c.req.param("conversationId");
+    const summary = await getLatestConversationSummary(conversationId);
+    return c.json(summary);
+  });
 export { conversationsApp };

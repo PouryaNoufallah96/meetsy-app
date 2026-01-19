@@ -7,9 +7,12 @@ import {
   getMembersInCommunity,
   getPartnerUserId,
   getUserMatchesInCommunity,
+  getUsersByIds,
 } from "./db-helpers";
 import { getOrCreateUserByClerkId } from "./user-utils";
-import { learningGoals } from "@/db/schema";
+import { conversationSummaries, learningGoals, messages } from "@/db/schema";
+import { db } from "@/db";
+import { desc, eq } from "drizzle-orm";
 
 export const aiMatchUsers = async (
   user: NonNullable<Awaited<ReturnType<typeof getOrCreateUserByClerkId>>>,
@@ -193,4 +196,85 @@ Only return an empty array [] if there are truly NO partners with any related le
   }
 };
 
-export const generateAISummaries = () => {};
+export const generateAISummaries = async (
+  conversationId: string,
+  conversationMessages: (typeof messages.$inferSelect)[]
+) => {
+  //get user details from the conversation
+  const userIds = [...new Set(conversationMessages.map((m) => m.senderId))];
+  const usersMap = await getUsersByIds(userIds);
+
+  const formattedMessages = conversationMessages.map((m) => {
+    const user = usersMap.get(m.senderId);
+    return `${user?.name}: ${m.content}`;
+  });
+
+  const conversationText = formattedMessages.join("\n");
+
+  //prompt for the AI to generate a summary of the conversation
+  const prompt = `You are an AI assistant that summarizes learning conversations between matched learning partners.
+
+Analyze the following conversation and provide:
+1. A concise summary of what was discussed
+2. Key points and insights shared
+3. Action items mentioned in the conversation
+4. Next steps for the learning partners
+
+Conversation:
+${conversationText}
+
+Please format your response as JSON with this structure:
+{
+  "summary": "A 2-3 sentence overview",
+  "keyPoints": ["point 1", "point 2", ...],
+  "actionItems": ["action item 1", "action item 2", ...],
+  "nextSteps": ["step 1", "step 2", ...]
+}`;
+  //invoke AI
+  try {
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      prompt,
+    });
+
+    //format and parse the json
+    let jsonText = text.trim();
+    if (jsonText.startsWith("```json")) {
+      jsonText = jsonText.replace(/^```json\s*\n/, "").replace(/\n```\s*$/, "");
+    } else if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```\s*\n/, "").replace(/\n```\s*$/, "");
+    }
+
+    const parsed = JSON.parse(jsonText);
+
+    const [summary] = await db
+      .insert(conversationSummaries)
+      .values({
+        conversationId,
+        summary: parsed.summary || "",
+        actionItems: parsed.actionItems || [],
+        keyPoints: parsed.keyPoints || [],
+        nextSteps: parsed.nextSteps || [],
+      })
+      .returning();
+
+    return summary;
+  } catch (error) {
+    console.error("Error generating AI summary", error);
+    throw new Error("Error generating AI summary");
+  }
+  //format and parse the json
+  //save the summary to the database
+};
+
+export const getLatestConversationSummary = async (conversationId: string) => {
+  //get the latest summary from the database
+  const [summary] = await db
+    .select()
+    .from(conversationSummaries)
+    .where(eq(conversationSummaries.conversationId, conversationId))
+    .orderBy(desc(conversationSummaries.generatedAt))
+    .limit(1);
+
+  return summary || null;
+};
